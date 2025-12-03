@@ -18,6 +18,7 @@ import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.Calendar
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 class AddMedicineFragment : Fragment() {
@@ -26,14 +27,12 @@ class AddMedicineFragment : Fragment() {
     private lateinit var medicineNameEditText: EditText
     private lateinit var medicineDescriptionEditText: EditText
     private lateinit var medicineTimePicker: TimePicker
+    private var medicineToEdit: Medicine? = null
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
             if (isGranted) {
                 saveMedicine()
-            } else {
-                // Explain to the user that the feature is unavailable because the
-                // features requires a permission that the user has denied.
             }
         }
 
@@ -47,6 +46,22 @@ class AddMedicineFragment : Fragment() {
         medicineDescriptionEditText = view.findViewById(R.id.et_medicine_description)
         medicineTimePicker = view.findViewById(R.id.tp_medicine_time)
         val saveButton = view.findViewById<Button>(R.id.btn_save_medicine)
+
+        medicineViewModel.medicineToEdit.observe(viewLifecycleOwner) { medicine ->
+            medicineToEdit = medicine
+            if (medicine != null) {
+                medicineNameEditText.setText(medicine.name)
+                medicineDescriptionEditText.setText(medicine.description)
+                val timeParts = medicine.time.split(":")
+                if (timeParts.size == 2) {
+                    medicineTimePicker.hour = timeParts[0].toInt()
+                    medicineTimePicker.minute = timeParts[1].toInt()
+                }
+                saveButton.text = "Update"
+            } else {
+                saveButton.text = "Save"
+            }
+        }
 
         saveButton.setOnClickListener {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -77,9 +92,29 @@ class AddMedicineFragment : Fragment() {
         val time = String.format("%02d:%02d", hour, minute)
 
         if (name.isNotEmpty() && description.isNotEmpty()) {
-            val medicine = Medicine(name, description, time)
-            medicineViewModel.addMedicine(medicine)
-            scheduleNotification(name, description, hour, minute)
+            // Cancel old work if editing
+            medicineToEdit?.workId?.let { workId ->
+                WorkManager.getInstance(requireContext()).cancelWorkById(workId)
+            }
+
+            val medicineId = medicineToEdit?.id ?: UUID.randomUUID().toString()
+            val (workId, dueTime) = scheduleNotification(name, description, hour, minute, medicineId)
+            
+            val newMedicine = Medicine(
+                id = medicineId,
+                name = name, 
+                description = description, 
+                time = time, 
+                workId = workId,
+                dueTimeInMillis = dueTime
+            )
+
+            if (medicineToEdit != null) {
+                medicineViewModel.updateMedicine(medicineToEdit!!, newMedicine)
+                medicineViewModel.setMedicineToEdit(null) // Reset edit state
+            } else {
+                medicineViewModel.addMedicine(newMedicine)
+            }
 
             (activity as? MainActivity)?.let {
                 it.supportFragmentManager.beginTransaction()
@@ -89,7 +124,7 @@ class AddMedicineFragment : Fragment() {
         }
     }
 
-    private fun scheduleNotification(name: String, description: String, hour: Int, minute: Int) {
+    private fun scheduleNotification(name: String, description: String, hour: Int, minute: Int, medicineId: String): Pair<UUID, Long> {
         val currentTime = Calendar.getInstance()
         val dueTime = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, hour)
@@ -106,6 +141,7 @@ class AddMedicineFragment : Fragment() {
         val data = Data.Builder()
             .putString("medicine_name", name)
             .putString("medicine_description", description)
+            .putString("medicine_id", medicineId)
             .build()
 
         val workRequest = OneTimeWorkRequestBuilder<NotificationWorker>()
@@ -114,5 +150,14 @@ class AddMedicineFragment : Fragment() {
             .build()
 
         WorkManager.getInstance(requireContext()).enqueue(workRequest)
+        
+        return Pair(workRequest.id, dueTime.timeInMillis)
+    }
+    
+    override fun onDestroyView() {
+        super.onDestroyView()
+        if (isRemoving) {
+            medicineViewModel.setMedicineToEdit(null)
+        }
     }
 }

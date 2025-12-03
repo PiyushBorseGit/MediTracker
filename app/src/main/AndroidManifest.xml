@@ -28,6 +28,12 @@
         <activity
             android:name=".MainActivity"
             android:exported="false" />
+            
+        <receiver android:name=".MedicineActionReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="ACTION_TAKE_MEDICINE" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

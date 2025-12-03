@@ -3,11 +3,66 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground"
     tools:context=".DashboardFragment">
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_medicine_list"
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="80dp"> <!-- Padding for FAB/BottomNav -->
+
+            <TextView
+                android:id="@+id/tv_attention_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Attention Needed"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorError"
+                android:layout_marginTop="16dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone"/>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_due_medicines"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:visibility="gone"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="My Schedule"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="?android:attr/textColorPrimary"
+                android:layout_marginTop="24dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginBottom="8dp"/>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_medicine_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false" />
+            
+            <TextView
+                 android:id="@+id/tv_empty_state"
+                 android:layout_width="match_parent"
+                 android:layout_height="wrap_content"
+                 android:text="No medicines added yet."
+                 android:gravity="center"
+                 android:layout_marginTop="32dp"
+                 android:textColor="?android:attr/textColorSecondary"/>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 
 </FrameLayout>
